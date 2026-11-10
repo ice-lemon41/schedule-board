@@ -121,36 +121,27 @@ button:disabled {
   color: var(--muted);
 }
 
-/* —— 看板 —— */
+/* —— 看板(径向:7 天围一圈,待安排居中) —— */
 
-.board {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-  padding: 12px 2px;
+.radial {
+  position: relative;
+  width: min(1080px, 100%);
+  aspect-ratio: 1;
+  margin: 18px auto 0;
 }
 
-/* 窄屏自动折行:3 列 → 2 列 → 1 列,不产生横向滚动 */
-@media (max-width: 1100px) {
-  .board {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 820px) {
-  .board {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 540px) {
-  .board {
-    grid-template-columns: 1fr;
-  }
-
-  .column {
-    min-height: 120px;
-  }
+/* 装饰环:7 天的锚点轨迹 */
+.radial::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 66%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border: 2px dashed var(--border);
+  border-radius: 50%;
+  pointer-events: none;
 }
 
 .column {
@@ -160,7 +151,93 @@ button:disabled {
   padding: 8px;
   display: flex;
   flex-direction: column;
-  min-height: 200px;
+}
+
+/* 天面板:定位在环外侧,事项多时内部滚动 */
+.radial .column {
+  position: absolute;
+  left: var(--x, 50%);
+  top: var(--y, 50%);
+  transform: translate(-50%, -50%);
+  width: clamp(150px, 16%, 190px);
+  max-height: 27%;
+}
+
+.radial .column .column__body {
+  flex: 1;
+  min-height: 64px;
+  overflow-y: auto;
+}
+
+/* 中心圆:待安排 */
+.radial .column--center {
+  left: 50%;
+  top: 50%;
+  width: 33%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border-style: dashed;
+  align-items: center;
+  justify-content: flex-start;
+  max-height: none;
+}
+
+.radial .column--center .column__header {
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.radial .column--center .column__body {
+  width: 78%;
+  min-height: 0;
+}
+
+/* 窄屏退回网格(圆环在小屏放不下):待安排占整行置顶 */
+@media (max-width: 860px) {
+  .radial {
+    aspect-ratio: auto;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .radial::before {
+    display: none;
+  }
+
+  .radial .column {
+    position: static;
+    transform: none;
+    width: auto;
+    max-height: none;
+    min-height: 140px;
+  }
+
+  .radial .column .column__body {
+    min-height: 64px;
+  }
+
+  .radial .column--center {
+    grid-column: 1 / -1;
+    aspect-ratio: auto;
+    width: auto;
+    border-radius: 10px;
+    border-style: solid;
+  }
+
+  .radial .column--center .column__body {
+    width: auto;
+  }
+}
+
+@media (max-width: 540px) {
+  .radial {
+    grid-template-columns: 1fr;
+  }
+
+  .radial .column {
+    min-height: 120px;
+  }
 }
 
 .column--focused {

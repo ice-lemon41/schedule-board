@@ -118,6 +118,28 @@ describe('App 看板', () => {
     expect(columnOf('吃饭').textContent).toContain(tomorrowLabel)
   })
 
+  it('径向布局:待安排在中心圆,7 天面板带环上定位,今天在正上方', async () => {
+    render(<App repository={makeFakeRepo()} />)
+    await screen.findByText('待安排')
+
+    const center = document.querySelector('.column--center')
+    expect(center).not.toBeNull()
+    expect(center!.textContent).toContain('待安排')
+
+    const days = document.querySelectorAll('.column:not(.column--center)')
+    expect(days).toHaveLength(7)
+    expect(days[0].querySelector('.column__header')!.textContent).toContain(`${dateLabel(today)} ${weekdayLabel(today)}`)
+    for (const el of days) {
+      const style = el.getAttribute('style') ?? ''
+      expect(style).toContain('--x')
+      expect(style).toContain('--y')
+    }
+    // 窗口首日(今天)锚点在正上方:x=50%,y 最小
+    expect(days[0].getAttribute('style')).toContain('--x: 50.00%')
+    const yValues = [...days].map((el) => Number((el.getAttribute('style') ?? '').match(/--y: ([\d.]+)%/)?.[1]))
+    expect(yValues[0]).toBeLessThan(Math.min(...yValues.slice(1)))
+  })
+
   it('刷新(重新挂载)后数据保持', async () => {
     const user = userEvent.setup()
     const repo = makeFakeRepo()
