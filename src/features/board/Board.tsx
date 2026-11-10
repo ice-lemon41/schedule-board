@@ -15,15 +15,18 @@ interface Props {
   onMoveTo: (id: string, targetKey: string, targetIndex: number) => void
 }
 
-/** 7 天在环上的位置(容器百分比):窗口首日=今天在正上方,顺时针排列 */
-const RING_RADIUS = 42 // 锚点到中心的距离(%)
-const DAY_POSITIONS: CSSProperties[] = Array.from({ length: 7 }, (_, i) => {
-  const theta = (i / 7) * 2 * Math.PI
+/** 环半径(容器百分比):内环写时间轴标签,外环挂事项面板 */
+const LABEL_RADIUS = 22
+const PANEL_RADIUS = 38
+
+/** 窗口第 index 天在环上的位置:今天(首日)在正上方,顺时针排列 */
+function ringPosition(index: number, radius: number): CSSProperties {
+  const theta = (index / 7) * 2 * Math.PI
   return {
-    '--x': `${(50 + RING_RADIUS * Math.sin(theta)).toFixed(2)}%`,
-    '--y': `${(50 - RING_RADIUS * Math.cos(theta)).toFixed(2)}%`,
+    '--x': `${(50 + radius * Math.sin(theta)).toFixed(2)}%`,
+    '--y': `${(50 - radius * Math.cos(theta)).toFixed(2)}%`,
   } as CSSProperties
-})
+}
 
 export function Board({ buckets, focusKey, onFocus, onToggleDone, onEdit, onDelete, onMoveTo }: Props) {
   // 位移 6px 才触发拖拽:普通点击仍然可以打开编辑
@@ -40,27 +43,38 @@ export function Board({ buckets, focusKey, onFocus, onToggleDone, onEdit, onDele
     onMoveTo(String(event.active.id), target.key, target.index)
   }
 
+  const inbox = buckets.find((b) => b.key === INBOX_KEY)
+  const days = buckets.filter((b) => b.key !== INBOX_KEY)
+
   return (
     <DndContext sensors={sensors} onDragEnd={onDragEnd}>
       <div className="radial">
-        {buckets.map((bucket, index) => {
-          const isCenter = bucket.key === INBOX_KEY
-          // buckets 固定为 [待安排, ...7天];天面板取环上位置,待安排居中
-          const style = isCenter ? undefined : DAY_POSITIONS[index - 1]
-          return (
-            <BoardColumn
-              key={bucket.key}
-              bucket={bucket}
-              center={isCenter}
-              style={style}
-              focused={bucket.key === focusKey}
-              onFocus={onFocus}
-              onToggleDone={onToggleDone}
-              onEdit={onEdit}
-              onDelete={onDelete}
-            />
-          )
-        })}
+        {inbox && (
+          <BoardColumn
+            key={inbox.key}
+            bucket={inbox}
+            variant="inbox"
+            focused={inbox.key === focusKey}
+            onFocus={onFocus}
+            onToggleDone={onToggleDone}
+            onEdit={onEdit}
+            onDelete={onDelete}
+          />
+        )}
+        {days.map((bucket, index) => (
+          <BoardColumn
+            key={bucket.key}
+            bucket={bucket}
+            variant="day"
+            labelStyle={ringPosition(index, LABEL_RADIUS)}
+            panelStyle={ringPosition(index, PANEL_RADIUS)}
+            focused={bucket.key === focusKey}
+            onFocus={onFocus}
+            onToggleDone={onToggleDone}
+            onEdit={onEdit}
+            onDelete={onDelete}
+          />
+        ))}
       </div>
     </DndContext>
   )

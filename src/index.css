@@ -121,7 +121,7 @@ button:disabled {
   color: var(--muted);
 }
 
-/* —— 看板(径向:7 天围一圈,待安排居中) —— */
+/* —— 看板(径向:时间轴环 + 环外事项 + 中心待安排) —— */
 
 .radial {
   position: relative;
@@ -130,13 +130,13 @@ button:disabled {
   margin: 18px auto 0;
 }
 
-/* 装饰环:7 天的锚点轨迹 */
+/* 时间轴环:日期标签所在的圆(直径 44%,收窄) */
 .radial::before {
   content: '';
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 66%;
+  width: 44%;
   aspect-ratio: 1;
   transform: translate(-50%, -50%);
   border: 2px dashed var(--border);
@@ -144,55 +144,144 @@ button:disabled {
   pointer-events: none;
 }
 
-.column {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
+/* 每天的「环上标签 + 环外面板」;桌面端展开成 .radial 的直接子级以便绝对定位 */
+.radial__day {
+  display: contents;
 }
 
-/* 天面板:定位在环外侧,事项多时内部滚动 */
-.radial .column {
+/* 时间轴标签:写在环上 */
+.ring__label {
   position: absolute;
   left: var(--x, 50%);
   top: var(--y, 50%);
   transform: translate(-50%, -50%);
-  width: clamp(150px, 16%, 190px);
-  max-height: 27%;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  z-index: 1;
 }
 
-.radial .column .column__body {
+.ring__label--today {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.ring__label--focused {
+  outline: 2px solid var(--accent);
+}
+
+.ring__badge {
+  font-size: 11px;
+  font-weight: 400;
+  color: #fff;
+  background: var(--accent);
+  border-radius: 999px;
+  padding: 0 6px;
+}
+
+.ring__label .bucket__count {
+  font-size: 11px;
+}
+
+/* 事项面板:挂在环的外圈,与同角度的时间轴标签对齐 */
+.day-panel {
+  position: absolute;
+  left: var(--x, 50%);
+  top: var(--y, 50%);
+  transform: translate(-50%, -50%);
+  width: clamp(140px, 15%, 176px);
+  max-height: 22%;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px;
+}
+
+.day-panel--focused {
+  outline: 2px solid var(--accent);
+}
+
+.day-panel--over {
+  background: var(--surface-over);
+}
+
+.day-panel__body {
   flex: 1;
-  min-height: 64px;
+  min-height: 56px;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 2px 0;
 }
 
 /* 中心圆:待安排 */
-.radial .column--center {
+.inbox {
+  position: absolute;
   left: 50%;
   top: 50%;
-  width: 33%;
+  transform: translate(-50%, -50%);
+  width: 28%;
   aspect-ratio: 1;
   border-radius: 50%;
-  border-style: dashed;
+  border: 1px dashed var(--border);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  max-height: none;
+  padding: 10px 0;
 }
 
-.radial .column--center .column__header {
-  justify-content: center;
-  flex-wrap: wrap;
+.inbox--focused {
+  outline: 2px solid var(--accent);
 }
 
-.radial .column--center .column__body {
-  width: 78%;
+.inbox--over {
+  background: var(--surface-over);
+}
+
+.inbox__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: none;
+  padding: 4px 0 8px;
+  font-weight: 600;
+}
+
+.inbox__body {
+  width: 74%;
+  flex: 1;
   min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-/* 窄屏退回网格(圆环在小屏放不下):待安排占整行置顶 */
+.bucket__count {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 12px;
+}
+
+.bucket__empty {
+  margin: 0;
+  padding: 12px 4px;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* 窄屏退回网格(圆环在小屏放不下):标签与面板恢复上下排列 */
 @media (max-width: 860px) {
   .radial {
     aspect-ratio: auto;
@@ -205,28 +294,50 @@ button:disabled {
     display: none;
   }
 
-  .radial .column {
+  .radial__day {
+    display: block;
+  }
+
+  .ring__label {
+    position: static;
+    transform: none;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .day-panel {
     position: static;
     transform: none;
     width: auto;
     max-height: none;
     min-height: 140px;
+    margin-top: 6px;
   }
 
-  .radial .column .column__body {
+  .day-panel__body {
+    overflow-y: visible;
     min-height: 64px;
   }
 
-  .radial .column--center {
+  .inbox {
+    position: static;
+    transform: none;
     grid-column: 1 / -1;
-    aspect-ratio: auto;
     width: auto;
+    aspect-ratio: auto;
     border-radius: 10px;
     border-style: solid;
+    align-items: stretch;
+    padding: 8px;
   }
 
-  .radial .column--center .column__body {
+  .inbox__header {
+    justify-content: center;
+  }
+
+  .inbox__body {
     width: auto;
+    overflow-y: visible;
   }
 }
 
@@ -235,66 +346,9 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 
-  .radial .column {
+  .day-panel {
     min-height: 120px;
   }
-}
-
-.column--focused {
-  outline: 2px solid var(--accent);
-}
-
-.column--over {
-  background: var(--surface-over);
-}
-
-.column__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-  border: none;
-  background: none;
-  padding: 6px 4px;
-  font-weight: 600;
-  text-align: left;
-}
-
-.column__label {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-
-.column__today {
-  font-size: 12px;
-  font-weight: 400;
-  color: #fff;
-  background: var(--accent);
-  border-radius: 999px;
-  padding: 1px 8px;
-}
-
-.column__count {
-  color: var(--muted);
-  font-weight: 400;
-  font-size: 13px;
-}
-
-.column__body {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-height: 64px;
-  padding: 4px 2px;
-}
-
-.column__empty {
-  margin: 0;
-  padding: 12px 4px;
-  color: var(--muted);
-  font-size: 13px;
-  text-align: center;
 }
 
 /* —— 卡片 —— */

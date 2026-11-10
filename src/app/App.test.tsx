@@ -32,14 +32,8 @@ function makeFakeRepo(seed: ScheduleItem[] = []): ScheduleRepository & { store: 
 const today = todayStr()
 const tomorrow = addDays(today, 1)
 const day3 = addDays(today, 2)
-const tomorrowLabel = `${dateLabel(tomorrow)} ${weekdayLabel(tomorrow)}`
-const day3Label = `${dateLabel(day3)} ${weekdayLabel(day3)}`
 
-function columnOf(text: string): Element {
-  const el = screen.getByText(text).closest('.column')
-  expect(el).not.toBeNull()
-  return el!
-}
+const dayLabel = (d: string) => `${dateLabel(d)} ${weekdayLabel(d)}`
 
 /** 解析预览行(dnd-kit 的 DndLiveRegion 同为 role="status",故用类名精确定位) */
 function preview(): Element {
@@ -48,15 +42,77 @@ function preview(): Element {
   return el!
 }
 
+/** 中心待安排圆 */
+function inbox(): Element {
+  const el = document.querySelector('.inbox')
+  expect(el).not.toBeNull()
+  return el!
+}
+
+/** 环上的日期标签(时间轴),按天数顺序(今天→第 7 天) */
+function pills(): Element[] {
+  return [...document.querySelectorAll('.ring__label')]
+}
+
+/** 指定日期的事项面板(挂在环外圈,aria-label = 列标签) */
+function panelByDate(d: string): Element {
+  const label = dayLabel(d)
+  const panel = [...document.querySelectorAll('.day-panel')].find((p) => p.getAttribute('aria-label') === label)
+  if (!panel) throw new Error(`找不到 ${label} 的事项面板`)
+  return panel
+}
+
+/** 元素 style 里 --x/--y 相对中心的距离(容器百分比) */
+function radiusOf(el: Element): number {
+  const style = el.getAttribute('style') ?? ''
+  const x = Number(style.match(/--x: ([\d.]+)%/)?.[1] ?? 50) - 50
+  const y = 50 - Number(style.match(/--y: ([\d.]+)%/)?.[1] ?? 50)
+  return Math.hypot(x, y)
+}
+
+/** 元素 style 里 --x/--y 相对中心的角度(正上方为 0,顺时针为正) */
+function angleOf(el: Element): number {
+  const style = el.getAttribute('style') ?? ''
+  const x = Number(style.match(/--x: ([\d.]+)%/)?.[1] ?? 50) - 50
+  const y = 50 - Number(style.match(/--y: ([\d.]+)%/)?.[1] ?? 50)
+  return Math.atan2(x, y)
+}
+
 describe('App 看板', () => {
-  it('空库打开:待安排 + 从今天起 7 天,今天列有徽标', async () => {
+  it('空库打开:中心待安排圆 + 环上 7 个日期标签,今天在正上方', async () => {
     render(<App repository={makeFakeRepo()} />)
     await screen.findByText('待安排')
-    const headers = document.querySelectorAll('.column__header')
-    expect(headers).toHaveLength(8)
-    expect(headers[1].textContent).toContain(`${dateLabel(today)} ${weekdayLabel(today)}`)
-    expect(headers[1].textContent).toContain('今天')
-    expect(headers[7].textContent).toContain(dateLabel(addDays(today, 6)))
+
+    expect(inbox().textContent).toContain('待安排')
+    const labels = pills()
+    expect(labels).toHaveLength(7)
+    expect(labels[0].textContent).toContain(dayLabel(today))
+    expect(labels[0].textContent).toContain('今天')
+    expect(labels[6].textContent).toContain(dayLabel(addDays(today, 6)))
+    expect(document.querySelectorAll('.day-panel')).toHaveLength(7)
+  })
+
+  it('径向几何:日期标签写在环上、事项面板挂环外圈、今天标签在正上方', async () => {
+    render(<App repository={makeFakeRepo()} />)
+    await screen.findByText('待安排')
+
+    const labels = pills()
+    const panels = [...document.querySelectorAll('.day-panel')]
+    expect(panels).toHaveLength(7)
+
+    // 今天(窗口首日)标签在正上方:x 居中、y 最小
+    expect(labels[0].getAttribute('style')).toContain('--x: 50.00%')
+    const labelYs = labels.map((el) => Number(el.getAttribute('style')!.match(/--y: ([\d.]+)%/)![1]))
+    expect(labelYs[0]).toBeLessThan(Math.min(...labelYs.slice(1)))
+
+    // 事项面板比时间轴标签更靠外;与标签同角度(径向对齐)
+    for (let i = 0; i < 7; i++) {
+      expect(radiusOf(panels[i])).toBeGreaterThan(radiusOf(labels[i]))
+      expect(angleOf(panels[i])).toBeCloseTo(angleOf(labels[i]), 2)
+    }
+
+    // 中心圆在容器中心
+    expect(inbox().className).toContain('inbox')
   })
 
   it('快速录入:无日期 → 待安排;预览正确', async () => {
@@ -69,75 +125,51 @@ describe('App 看板', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '添加' }))
     await screen.findByText('交周报')
-    expect(columnOf('交周报').textContent).toContain('待安排')
+    expect(inbox().textContent).toContain('交周报')
   })
 
-  it('快速录入:「明天 交周报」落在明天列', async () => {
+  it('快速录入:「明天 交周报」落在明天的面板', async () => {
     const user = userEvent.setup()
     render(<App repository={makeFakeRepo()} />)
 
     await user.type(screen.getByLabelText('快速录入'), '明天 交周报')
-    expect(preview()).toHaveTextContent(tomorrowLabel)
+    expect(preview()).toHaveTextContent(dayLabel(tomorrow))
 
     fireEvent.click(screen.getByRole('button', { name: '添加' }))
     await screen.findByText('交周报')
-    expect(columnOf('交周报').textContent).toContain(tomorrowLabel)
+    expect(panelByDate(tomorrow).textContent).toContain('交周报')
   })
 
-  it('快速录入:「周五 交周报」落在周五列(验收标准)', async () => {
+  it('快速录入:「周五 交周报」落在周五面板(验收标准)', async () => {
     const user = userEvent.setup()
     render(<App repository={makeFakeRepo()} />)
 
     // 本周五(已过则下周)——与 quickAdd 解析规则一致
     const friday = addDays(today, (5 - weekdayOf(today) + 7) % 7)
-    const fridayLabel = `${dateLabel(friday)} ${weekdayLabel(friday)}`
 
     await user.type(screen.getByLabelText('快速录入'), '周五 交周报')
-    expect(preview()).toHaveTextContent(fridayLabel)
+    expect(preview()).toHaveTextContent(dayLabel(friday))
 
     fireEvent.click(screen.getByRole('button', { name: '添加' }))
     await screen.findByText('交周报')
-    expect(columnOf('交周报').textContent).toContain(fridayLabel)
+    expect(panelByDate(friday).textContent).toContain('交周报')
   })
 
-  it('点击列标题聚焦后,无日期录入落到该列', async () => {
+  it('点击环上日期标签聚焦后,无日期录入落到该日', async () => {
     const user = userEvent.setup()
     render(<App repository={makeFakeRepo()} />)
     await screen.findByText('待安排')
 
-    const headers = document.querySelectorAll('.column__header')
-    fireEvent.click(headers[2]) // 明天列
-    // focused 类挂在列容器(.column)上,而非表头按钮
-    expect(headers[2].closest('.column')).toHaveClass('column--focused')
+    const tomorrowPill = pills()[1] // 明天
+    fireEvent.click(tomorrowPill)
+    expect(tomorrowPill).toHaveClass('ring__label--focused')
 
     await user.type(screen.getByLabelText('快速录入'), '吃饭')
-    expect(preview()).toHaveTextContent(tomorrowLabel)
+    expect(preview()).toHaveTextContent(dayLabel(tomorrow))
     fireEvent.click(screen.getByRole('button', { name: '添加' }))
 
     await screen.findByText('吃饭')
-    expect(columnOf('吃饭').textContent).toContain(tomorrowLabel)
-  })
-
-  it('径向布局:待安排在中心圆,7 天面板带环上定位,今天在正上方', async () => {
-    render(<App repository={makeFakeRepo()} />)
-    await screen.findByText('待安排')
-
-    const center = document.querySelector('.column--center')
-    expect(center).not.toBeNull()
-    expect(center!.textContent).toContain('待安排')
-
-    const days = document.querySelectorAll('.column:not(.column--center)')
-    expect(days).toHaveLength(7)
-    expect(days[0].querySelector('.column__header')!.textContent).toContain(`${dateLabel(today)} ${weekdayLabel(today)}`)
-    for (const el of days) {
-      const style = el.getAttribute('style') ?? ''
-      expect(style).toContain('--x')
-      expect(style).toContain('--y')
-    }
-    // 窗口首日(今天)锚点在正上方:x=50%,y 最小
-    expect(days[0].getAttribute('style')).toContain('--x: 50.00%')
-    const yValues = [...days].map((el) => Number((el.getAttribute('style') ?? '').match(/--y: ([\d.]+)%/)?.[1]))
-    expect(yValues[0]).toBeLessThan(Math.min(...yValues.slice(1)))
+    expect(panelByDate(tomorrow).textContent).toContain('吃饭')
   })
 
   it('刷新(重新挂载)后数据保持', async () => {
@@ -152,7 +184,7 @@ describe('App 看板', () => {
 
     render(<App repository={repo} />)
     await screen.findByText('交周报')
-    expect(columnOf('交周报').textContent).toContain(tomorrowLabel)
+    expect(panelByDate(tomorrow).textContent).toContain('交周报')
   })
 
   it('勾选完成与取消勾选', async () => {
@@ -166,7 +198,7 @@ describe('App 看板', () => {
     expect(screen.getByRole('checkbox', { name: '完成 任务甲' })).toBeChecked()
   })
 
-  it('编辑对话框:改标题与日期,卡片移动到新列', async () => {
+  it('编辑对话框:改标题与日期,卡片移动到新面板', async () => {
     const repo = makeFakeRepo([createItem({ title: '交周报', date: tomorrow }, 0)])
     render(<App repository={repo} />)
     await screen.findByText('交周报')
@@ -179,7 +211,7 @@ describe('App 看板', () => {
     fireEvent.click(screen.getByRole('button', { name: '保存' }))
 
     await screen.findByText('交月报')
-    expect(columnOf('交月报').textContent).toContain(day3Label)
+    expect(panelByDate(day3).textContent).toContain('交月报')
     await waitFor(() => expect(repo.store.values().next().value!.title).toBe('交月报'))
   })
 
@@ -197,16 +229,16 @@ describe('App 看板', () => {
   it('翻周与回到今天', async () => {
     render(<App repository={makeFakeRepo()} />)
     await screen.findByText('待安排')
-    const headers = () => document.querySelectorAll('.column__header')
+    const firstLabel = () => pills()[0].textContent ?? ''
 
     fireEvent.click(screen.getByRole('button', { name: '下一周 →' }))
-    expect(headers()[1].textContent).toContain(dateLabel(addDays(today, 7)))
+    expect(firstLabel()).toContain(dateLabel(addDays(today, 7)))
 
     fireEvent.click(screen.getByRole('button', { name: '← 上一周' }))
-    expect(headers()[1].textContent).toContain(dateLabel(today))
+    expect(firstLabel()).toContain(dateLabel(today))
 
     fireEvent.click(screen.getByRole('button', { name: '下一周 →' }))
     fireEvent.click(screen.getByRole('button', { name: '回到今天' }))
-    expect(headers()[1].textContent).toContain(dateLabel(today))
+    expect(firstLabel()).toContain(dateLabel(today))
   })
 })
