@@ -124,22 +124,43 @@ button:disabled {
 /* —— 看板 —— */
 
 .board {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
-  align-items: flex-start;
-  overflow-x: auto;
   padding: 12px 2px;
 }
 
+/* 窄屏自动折行:3 列 → 2 列 → 1 列,不产生横向滚动 */
+@media (max-width: 1100px) {
+  .board {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 820px) {
+  .board {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 540px) {
+  .board {
+    grid-template-columns: 1fr;
+  }
+
+  .column {
+    min-height: 120px;
+  }
+}
+
 .column {
-  flex: 0 0 224px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 8px;
   display: flex;
   flex-direction: column;
-  min-height: 220px;
+  min-height: 200px;
 }
 
 .column--focused {
