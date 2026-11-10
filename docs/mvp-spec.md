@@ -34,7 +34,7 @@ interface ScheduleItem {
   endAt?: string      // 'HH:mm',可选,须 >= startAt
   isAllDay: boolean   // 全天日程(无时刻)
   done: boolean       // 完成勾选
-  position: string    // 桶内排序,分数索引(fractional indexing)字符串
+  position: number    // 桶内排序序号(0,1,2…;拖拽后桶内整体重排)
   deletedAt: number | null  // 软删除
   createdAt: number   // epoch ms
   updatedAt: number   // epoch ms
@@ -43,7 +43,7 @@ interface ScheduleItem {
 
 要点:
 - **「列」不落库**:7 天列 + 待安排列全部由 `date` 字段推导(参考 Vikunja「一套数据多视图」)。
-- 排序用分数索引(fractional indexing):两个位置值之间生成新值,拖拽不需要重排整桶。
+- 排序用整数序号 + 桶内整体重排:本地单用户、桶内条目量很小,拖拽后对整桶重新编号(0,1,2…),只持久化位置变化的条目;实现最简、行为最好测。分数索引(fractional indexing)推迟到实现多端同步时再引入。
 - 日期语义:**本地时区**,字符串比较排序;跨天/月末由日期库处理,测试必须覆盖。
 
 ## 5. 核心循环(MVP 必须全部完成)
@@ -76,7 +76,7 @@ src/
 │   ├── types.ts        # ScheduleItem 等类型
 │   ├── dateUtils.ts    # 7天窗口、日期格式化(本地时区)
 │   ├── buckets.ts      # 分桶(7天 + 待安排)、桶内排序
-│   ├── position.ts     # 分数索引生成/比较
+│   ├── position.ts     # 桶内重排(拖拽后的重新编号)
 │   └── quickAdd.ts     # 自然语言解析
 ├── data/
 │   ├── repository.ts   # ScheduleRepository 接口
@@ -88,7 +88,7 @@ src/
 ```
 
 测试基线(Vitest):
-- `core` 全量单测:日期分桶(今天/明天/跨月/跨年)、时区边界、quickAdd 解析表、position 生成与排序稳定性。
+- `core` 全量单测:日期分桶(今天/明天/跨月/跨年)、时区边界、quickAdd 解析表、position 重排正确性。
 - Repository 集成测试:fake-indexeddb 环境 CRUD + 软删除。
 - UI 冒烟:渲染看板、新建、拖拽、勾选(testing-library)。
 
