@@ -7,9 +7,9 @@
 | 用途 | 技术 | 状态 |
 |---|---|---|
 | 语言 | TypeScript(strict 模式) | ✅ 全量使用 |
-| UI 框架 | React 18 | ✅ 骨架已建,UI 层开发中 |
+| UI 框架 | React 18 | ✅ MVP 完成 |
 | 构建工具 | Vite 6 | ✅ |
-| 拖拽交互 | dnd-kit(core + sortable + utilities) | ⏳ 已安装,UI 层待接入 |
+| 拖拽交互 | dnd-kit(core + sortable + utilities) | ✅ 看板拖拽已接入 |
 | 本地存储 | Dexie 4(IndexedDB) | ✅ 已封装在 Repository 层后 |
 | 测试框架 | Vitest 5 | ✅ |
 | DOM 测试环境 | happy-dom 21 | ✅ |
@@ -58,15 +58,19 @@ src/
 │   ├── dateUtils.ts         #   7 天窗口、跨月跨年、闰年、日期标签
 │   ├── buckets.ts           #   分桶:待安排 + 7 天(列不落库,由 date 推导)
 │   ├── position.ts          #   桶内重排(整数序号 + 整体重编号)
+│   ├── move.ts              #   跨桶/同桶移动(拖拽核心)
 │   └── quickAdd.ts          #   自然语言录入解析(「周五 下午3点 交周报」)
 ├── data/
 │   ├── repository.ts        # ScheduleRepository 接口(数据访问唯一入口)
 │   └── dexieRepository.ts   # Dexie/IndexedDB 实现
-├── app/                     # 根组件(UI 层开发中)
-└── test/setup.ts            # Testing Library 全局匹配器
+├── features/
+│   ├── board/               # 看板:列/卡片/编辑对话框/状态 hook/拖拽落点解析
+│   └── quick-add/           # 快速录入框 + 解析预览
+├── app/                     # 根组件(App.tsx 接线各部分)
+└── test/setup.ts            # Testing Library 全局匹配器 + afterEach(cleanup)
 ```
 
-依赖方向单向:`app → features(待建) → core / data`,`core` 不依赖任何其他层。
+依赖方向单向:`app → features → core / data`,`core` 不依赖任何其他层。
 
 ## 4. 常用命令
 
@@ -82,9 +86,12 @@ src/
 
 | 层 | 方式 | 数量(当前) |
 |---|---|---|
-| core | 纯函数单测(日期分桶/重排/解析表,含边界:月末、闰年、无效日期、区间倒挂) | 72 |
+| core | 纯函数单测(日期分桶/重排/移动/解析表,含边界:月末、闰年、无效日期、区间倒挂) | 78 |
 | data | fake-indexeddb 集成(CRUD、软删除、重排持久化闭环) | 5 |
-| app/UI | Testing Library 组件测试 | 1(UI 完成后扩充) |
+| features/board | 落点解析单测 + 状态 hook 测试(renderHook + 假 Repository) | 10 |
+| app | Testing Library 组件测试(渲染、录入、完成、编辑、删除、翻周、刷新保持) | 10 |
+
+**UI 测试策略说明**:真实拖拽手势由 dnd-kit 库自身负责,组件测试不做手势模拟;拖拽的落点计算(dropTarget)、移动与持久化(moveItem + useScheduleBoard)分别有独立测试覆盖。
 
 约定:**每次代码改动后,新增/修改的行为必须有对应测试,`npm test` 全绿后才算完成**(见 AGENTS.md 规则 2)。
 

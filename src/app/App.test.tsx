@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
-import { addDays, dateLabel, todayStr, weekdayLabel } from '../core/dateUtils'
+import { addDays, dateLabel, todayStr, weekdayLabel, weekdayOf } from '../core/dateUtils'
 import { createItem } from '../core/entity'
 import type { ScheduleItem } from '../core/types'
 import type { ScheduleRepository } from '../data/repository'
@@ -82,6 +82,22 @@ describe('App 看板', () => {
     fireEvent.click(screen.getByRole('button', { name: '添加' }))
     await screen.findByText('交周报')
     expect(columnOf('交周报').textContent).toContain(tomorrowLabel)
+  })
+
+  it('快速录入:「周五 交周报」落在周五列(验收标准)', async () => {
+    const user = userEvent.setup()
+    render(<App repository={makeFakeRepo()} />)
+
+    // 本周五(已过则下周)——与 quickAdd 解析规则一致
+    const friday = addDays(today, (5 - weekdayOf(today) + 7) % 7)
+    const fridayLabel = `${dateLabel(friday)} ${weekdayLabel(friday)}`
+
+    await user.type(screen.getByLabelText('快速录入'), '周五 交周报')
+    expect(preview()).toHaveTextContent(fridayLabel)
+
+    fireEvent.click(screen.getByRole('button', { name: '添加' }))
+    await screen.findByText('交周报')
+    expect(columnOf('交周报').textContent).toContain(fridayLabel)
   })
 
   it('点击列标题聚焦后,无日期录入落到该列', async () => {
