@@ -87,6 +87,22 @@ button:disabled {
   font-size: 14px;
 }
 
+/* 翻周按钮:两行排布,文字在上、箭头在下;「回到今天」拆成「回到 / 今天」 */
+.app__navbtn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 5px 12px;
+  line-height: 1.2;
+}
+
+.app__navarrow {
+  font-size: 12px;
+  line-height: 1;
+  color: var(--muted);
+}
+
 /* —— 快速录入 —— */
 
 .quickadd {

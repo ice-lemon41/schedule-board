@@ -231,13 +231,21 @@ describe('App 看板', () => {
     await screen.findByText('待安排')
     const firstLabel = () => pills()[0].textContent ?? ''
 
-    fireEvent.click(screen.getByRole('button', { name: '下一周 →' }))
+    // 按钮两行排布:文字在上、箭头在下;「回到今天」拆成两行
+    const [prev, back, next] = [...document.querySelectorAll('.app__navbtn')].map((b) =>
+      [...b.querySelectorAll('span')].map((s) => s.textContent),
+    )
+    expect(prev).toEqual(['上一周', '←'])
+    expect(back).toEqual(['回到', '今天'])
+    expect(next).toEqual(['下一周', '→'])
+
+    fireEvent.click(screen.getByRole('button', { name: '下一周' }))
     expect(firstLabel()).toContain(dateLabel(addDays(today, 7)))
 
-    fireEvent.click(screen.getByRole('button', { name: '← 上一周' }))
+    fireEvent.click(screen.getByRole('button', { name: '上一周' }))
     expect(firstLabel()).toContain(dateLabel(today))
 
-    fireEvent.click(screen.getByRole('button', { name: '下一周 →' }))
+    fireEvent.click(screen.getByRole('button', { name: '下一周' }))
     fireEvent.click(screen.getByRole('button', { name: '回到今天' }))
     expect(firstLabel()).toContain(dateLabel(today))
   })

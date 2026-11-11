@@ -38,14 +38,17 @@ export function App({ repository }: { repository?: ScheduleRepository } = {}) {
       <header className="app__header">
         <h1 className="app__title">日程看板</h1>
         <div className="app__nav">
-          <button type="button" onClick={board.goPrevWeek}>
-            ← 上一周
+          <button type="button" className="app__navbtn" aria-label="上一周" onClick={board.goPrevWeek}>
+            <span>上一周</span>
+            <span className="app__navarrow" aria-hidden="true">←</span>
           </button>
-          <button type="button" onClick={board.goToday}>
-            回到今天
+          <button type="button" className="app__navbtn" aria-label="回到今天" onClick={board.goToday}>
+            <span>回到</span>
+            <span>今天</span>
           </button>
-          <button type="button" onClick={board.goNextWeek}>
-            下一周 →
+          <button type="button" className="app__navbtn" aria-label="下一周" onClick={board.goNextWeek}>
+            <span>下一周</span>
+            <span className="app__navarrow" aria-hidden="true">→</span>
           </button>
           <span className="app__range">
             {board.windowDays[0]} ~ {board.windowDays[6]}
