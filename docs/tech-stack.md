@@ -89,7 +89,7 @@ src/
 | core | 纯函数单测(日期分桶/重排/移动/解析表,含边界:月末、闰年、无效日期、区间倒挂) | 78 |
 | data | fake-indexeddb 集成(CRUD、软删除、重排持久化闭环) | 5 |
 | features/board | 落点解析单测 + 状态 hook 测试(renderHook + 假 Repository) | 10 |
-| app | Testing Library 组件测试(渲染、录入、完成、编辑、删除、翻周、刷新保持) | 10 |
+| app | Testing Library 组件测试(渲染、录入、完成、编辑、删除、翻周、刷新保持、径向几何) | 11 |
 
 **UI 测试策略说明**:真实拖拽手势由 dnd-kit 库自身负责,组件测试不做手势模拟;拖拽的落点计算(dropTarget)、移动与持久化(moveItem + useScheduleBoard)分别有独立测试覆盖。
 
